@@ -1,16 +1,27 @@
-"""
-Created on Tue Apr 25 18:45:37 2017
-Copyright 2017 Chase Clarke cfclarke@bu.edu
-"""
-
 from __future__ import print_function
-from apiclient.discovery import build
+import googleapiclient
 from httplib2 import Http
 from oauth2client import file, client, tools
 from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdrivermanager.chrome import ChromeDriverManager
+from selenium.webdriver.support.wait import WebDriverWait
 import getpass
 import time
+
+"""
+Created on Tue Apr 25 18:45:37 2017
+Copyright 2017 Chase Clarke cfclarke@bu.edu
+
+"""
+
+"""
+
+Modified Wed Sep 7 08:45PM 2022
+By: Mio Diaz
+
+"""
 
 def login(loginInfo): #this is the login function
     #loginInfo is a string of what you are logging into
@@ -25,26 +36,27 @@ def login(loginInfo): #this is the login function
     username_password = [USERNAME, PASSWORD]
     return [USERNAME, PASSWORD]
 
-def send_email(credentials): #send_email asks if the user wants an email sent to him/her with calendar info
-    global global_email
-    global bool_send_email
-    USERNAME = credentials[0]
-    email = USERNAME + "@bu.edu"
-    send_email = input('Would you like your calendar sent via email (Y/N)? \nMac users: the email will allow you to add this to your calendar app.\n ')
-    while send_email.lower() not in {'y','n'}:
-        send_email = input('You must enter yes(Y) or no(N) input not case sensitive: ')
-    if(send_email.lower() == 'y'):
-        print("Noted... An email will be sent to", email, "with more information.")
-        print("")
-        global_email = email
-        bool_send_email = True
-    else:
-        print("Noted...")
-        print("")
-        global_email = email
-        bool_send_email = False
+# def send_email(credentials): #send_email asks if the user wants an email sent to him/her with calendar info
+#     global global_email
+#     global bool_send_email
+#     USERNAME = credentials[0]
+#     email = USERNAME + "@bu.edu"
+#     send_email = input('Would you like your calendar sent via email (Y/N)? \nMac users: the email will allow you to add this to your calendar app.\n ')
+#     while send_email.lower() not in {'y','n'}:
+#         send_email = input('You must enter yes(Y) or no(N) input not case sensitive: ')
+#     if(send_email.lower() == 'y'):
+#         print("Noted... An email will be sent to", email, "with more information.")
+#         print("")
+#         global_email = email
+#         bool_send_email = True
+#     else:
+#         print("Noted...")
+#         print("")
+#         global_email = email
+#         bool_send_email = False
 
-def get_BU_data(credentials): #loggs into the bu website and pulls all your calendar data
+def get_pelo_data(credentials): 
+#logs into the bu website and pulls all your calendar data
     USERNAME = credentials[0]
     PASSWORD = credentials[1]
     changed_credentials = []
@@ -54,34 +66,44 @@ def get_BU_data(credentials): #loggs into the bu website and pulls all your cale
     line = "/html/body/table[3]/tbody/tr["
     prof_name = "]/td[5]/font/text()[2]"
     print("Logging in. Allow up to 30s due to exception handling.")
-    #logging into the BU website using a automated Google Chrome window
-    driver = webdriver.Chrome("~/selenium/chromedriver")#location of automated Chrome exe file
+    #logging into the peloton website using a automated Google Chrome window
+    # driver = webdriver.Chrome("/Users/miablo/Downloads/chromedriver")
+    #location of automated Chrome exe file
+
+    path = ("/Users/miablo/Downloads/chromedriver")
+    s = Service(path)
+    driver = webdriver.Chrome(service=s)
+
+    # driver = webdriver.Chrome("/Users/miablo/Downloads/chromedriver")
     driver.set_page_load_timeout(30)
-    driver.get("https://www.bu.edu/link/bin/uiscgi_studentlink.pl/1493162401?ModuleName=allsched.pl") #url
+    driver.get("https://auth.onepeloton.com/login") #url
     driver.maximize_window()
     driver.implicitly_wait(20)
-    driver.find_element_by_id("username").send_keys(USERNAME) #entering the username
-    driver.find_element_by_name("pw2").send_keys(PASSWORD) #entering the password
+    driver.find_element("name", "usernameOrEmail").send_keys(USERNAME) #entering the username
+    driver.find_element("name", "password").send_keys(PASSWORD) #entering the password
     temp_url = driver.current_url
-    driver.find_element_by_class_name("input-submit").click() #clicking the login button
+
+    WebDriverWait(driver, TimeSpan.FromSeconds(20)).Until(ExpectedConditions.ElementToBeClickable(By.XPath("//button[@type/='submit']"))).Click();
+
     while is_logged_in == False:
         try:
             if (driver.find_element_by_xpath("//*[@id='wrapper']/div/h1").text == "Web Login"): #checking if the login was successful
                 driver.quit()
                 print("\nIncorrect username or password. Please try again.")
-                changed_credentials = login("correct BU")
+                changed_credentials = login("correct pelo")
                 USERNAME = changed_credentials[0]
                 PASSWORD = changed_credentials[1]
                 print("Logging in. Allow up to 30s due to exception handling.")
                 #logging into the BU website using a automated Google Chrome window
-                driver = webdriver.Chrome("~/selenium/chromedriver")#location of automated Chrome exe file
+                driver = webdriver.Chrome(service=s)
+
                 driver.set_page_load_timeout(30)
-                driver.get("https://www.bu.edu/link/bin/uiscgi_studentlink.pl/1493162401?ModuleName=allsched.pl") #url
+                driver.get("https://auth.onepeloton.com/login") #url
                 driver.maximize_window()
                 driver.implicitly_wait(20)
-                driver.find_element_by_id("username").send_keys(USERNAME) #entering the username
-                driver.find_element_by_name("pw2").send_keys(PASSWORD) #entering the password
-                driver.find_element_by_class_name("input-submit").click() #clicking the login button
+                driver.find_element_by_class_name("InputWithLabelView__Container-sc-1nfk2v2-0 eItdDS").send_keys(USERNAME) #entering the username
+                driver.find_element_by_class_name("InputWithLabelView__Container-sc-1nfk2v2-0 eItdDS").send_keys(PASSWORD) #entering the password
+                driver.find_element_by_class_name("buttons__Button1-sc-5819zz-0 buttons__Button1Large-sc-5819zz-1 SubmitButton__ActionButton-nki0x6-0 hlkwmh fHUuvL bDeiPM Form__StyledSubmitButton-sc-1silpjw-0 cKsDLr").click() #clicking the login button
         except NoSuchElementException:
             print("Login successful!\n")
             is_logged_in = True
@@ -171,8 +193,10 @@ def new_cal_event(summary, location, start_datetime, end_datetime, recurrence): 
         Start: %s
         End:   %s''' % (e['summary'].encode('utf-8'), e['start']['dateTime'], e['end']['dateTime']))
     
-def week_finder(week): #takes the given days of the week and turns them into dates on the first week of school this semseter
-    week_dict = {"Mon":23, "Tue":24, "Wed":25, "Thu":26, "Fri":27} #days of the week with their cooresponding date on the first week of classes in spring 2017
+def week_finder(week): 
+#takes the given days of the week and turns them into dates 
+    week_dict = {"Mon":23, "Tue":24, "Wed":25, "Thu":26, "Fri":27} 
+    #days of the week with their cooresponding date on the first week of classes in spring 2017
     line = ""
     return_list = []
     try:
@@ -187,7 +211,8 @@ def week_finder(week): #takes the given days of the week and turns them into dat
     except KeyError:
         return []
 
-def start_to_militarty_time(i): #takes the start time that has been webscraped and turns it into military time
+def start_to_militarty_time(i): 
+#takes the start time that has been webscraped and turns it into military time
     start_datetime = ""
     if "".join(i[-2][-2:]) == "pm":
         if int("".join(i[-2][:-5])) != 12:
@@ -198,7 +223,8 @@ def start_to_militarty_time(i): #takes the start time that has been webscraped a
         start_datetime = i[-2][:-2]
     return str(start_datetime)
 
-def end_to_military_time(i): #takes the end time that has been webscraped and turns it into military time
+def end_to_military_time(i): 
+#takes the end time that has been webscraped and turns it into military time
     end_datetime = ""
     if "".join(i[-1][-2:]) == "pm":
         if int("".join(i[-1][:-5])) != 12:
@@ -210,12 +236,12 @@ def end_to_military_time(i): #takes the end time that has been webscraped and tu
     return str(end_datetime)
 
 #executing the functions
-credentials = login("BU") #getting username and password
-send_email(credentials)#checking if user wants an email
-data = get_BU_data(credentials) #scraping the website
+credentials = login("Peloton") #getting username and password
+# send_email(credentials)#checking if user wants an email
+data = get_pelo_data(credentials) #scraping the website
 data = simplify(data) #simplifying data
 data = parse(data) #making data usable
-#print(data)
+print(data)
 
 #declaring the variables needed to call new_cal_event
 EVENT = {}
