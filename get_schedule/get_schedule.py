@@ -7,8 +7,11 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdrivermanager.chrome import ChromeDriverManager
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as ExpectedConditions
+from selenium.webdriver.common.by import By
 import getpass
 import time
+import datetime as DateTime
 
 """
 Created on Tue Apr 25 18:45:37 2017
@@ -27,6 +30,7 @@ def login(loginInfo): #this is the login function
     #loginInfo is a string of what you are logging into
     #userinput of username and password in a secure format
     global username_password
+
     print("#--------------------------------------------#")
     print("Enter your",loginInfo,"login information: ")
     USERNAME = input('Username: ')
@@ -34,26 +38,11 @@ def login(loginInfo): #this is the login function
     print("#--------------------------------------------#")
     print("")
     username_password = [USERNAME, PASSWORD]
-    return [USERNAME, PASSWORD]
 
-# def send_email(credentials): #send_email asks if the user wants an email sent to him/her with calendar info
-#     global global_email
-#     global bool_send_email
-#     USERNAME = credentials[0]
-#     email = USERNAME + "@bu.edu"
-#     send_email = input('Would you like your calendar sent via email (Y/N)? \nMac users: the email will allow you to add this to your calendar app.\n ')
-#     while send_email.lower() not in {'y','n'}:
-#         send_email = input('You must enter yes(Y) or no(N) input not case sensitive: ')
-#     if(send_email.lower() == 'y'):
-#         print("Noted... An email will be sent to", email, "with more information.")
-#         print("")
-#         global_email = email
-#         bool_send_email = True
-#     else:
-#         print("Noted...")
-#         print("")
-#         global_email = email
-#         bool_send_email = False
+    if len(username_password) != 0:
+        print("Password and username stored successfully")
+
+    return [USERNAME, PASSWORD]
 
 def get_pelo_data(credentials): 
 #logs into the bu website and pulls all your calendar data
@@ -62,110 +51,130 @@ def get_pelo_data(credentials):
     changed_credentials = []
     return_list = []
     temp_url = ""
+    login_url = "https://auth.onepeloton.com/login"
+    successful_login_url ="https://members.onepeloton.com/schedule/cycling"
     is_logged_in = False
-    line = "/html/body/table[3]/tbody/tr["
-    prof_name = "]/td[5]/font/text()[2]"
+
     print("Logging in. Allow up to 30s due to exception handling.")
     #logging into the peloton website using a automated Google Chrome window
-    # driver = webdriver.Chrome("/Users/miablo/Downloads/chromedriver")
+   
     #location of automated Chrome exe file
-
     path = ("/Users/miablo/Downloads/chromedriver")
     s = Service(path)
     driver = webdriver.Chrome(service=s)
 
-    # driver = webdriver.Chrome("/Users/miablo/Downloads/chromedriver")
     driver.set_page_load_timeout(30)
-    driver.get("https://auth.onepeloton.com/login") #url
+    driver.get(login_url) #url
     driver.maximize_window()
-    driver.implicitly_wait(20)
+
+    driver.implicitly_wait(10)
+
     driver.find_element("name", "usernameOrEmail").send_keys(USERNAME) #entering the username
     driver.find_element("name", "password").send_keys(PASSWORD) #entering the password
-    temp_url = driver.current_url
 
-    WebDriverWait(driver, TimeSpan.FromSeconds(20)).Until(ExpectedConditions.ElementToBeClickable(By.XPath("//button[@type/='submit']"))).Click();
+    WebDriverWait(driver, 10).until(ExpectedConditions.element_to_be_clickable((By.XPATH, "//div[@id='__next']/section/div/div/form/button"))).click()
+
+    time.sleep(5)
+
+    temp_url = driver.current_url
 
     while is_logged_in == False:
         try:
-            if (driver.find_element_by_xpath("//*[@id='wrapper']/div/h1").text == "Web Login"): #checking if the login was successful
+
+            time.sleep(5)
+
+            print(login_url)
+            print(temp_url)
+
+            if (login_url in temp_url): #checking if the login was successful
                 driver.quit()
+
                 print("\nIncorrect username or password. Please try again.")
                 changed_credentials = login("correct pelo")
                 USERNAME = changed_credentials[0]
                 PASSWORD = changed_credentials[1]
                 print("Logging in. Allow up to 30s due to exception handling.")
-                #logging into the BU website using a automated Google Chrome window
+
                 driver = webdriver.Chrome(service=s)
 
                 driver.set_page_load_timeout(30)
-                driver.get("https://auth.onepeloton.com/login") #url
-                driver.maximize_window()
+                driver.get(login_url) #url
+                # driver.maximize_window()
+
                 driver.implicitly_wait(20)
-                driver.find_element_by_class_name("InputWithLabelView__Container-sc-1nfk2v2-0 eItdDS").send_keys(USERNAME) #entering the username
-                driver.find_element_by_class_name("InputWithLabelView__Container-sc-1nfk2v2-0 eItdDS").send_keys(PASSWORD) #entering the password
-                driver.find_element_by_class_name("buttons__Button1-sc-5819zz-0 buttons__Button1Large-sc-5819zz-1 SubmitButton__ActionButton-nki0x6-0 hlkwmh fHUuvL bDeiPM Form__StyledSubmitButton-sc-1silpjw-0 cKsDLr").click() #clicking the login button
+                driver.find_element("name", "usernameOrEmail").send_keys(USERNAME) #entering the username
+                driver.find_element("name", "password").send_keys(PASSWORD) #entering the password
+
+                WebDriverWait(driver, 10).until(ExpectedConditions.element_to_be_clickable((By.XPATH, "//div[@id='__next']/section/div/div/form/button"))).click() #clicking the login button
+
+
+                time.sleep(5)
+
+                temp_url = driver.current_url
+
+            else:
+                print("Login successful!\n")
+                is_logged_in = True
+
         except NoSuchElementException:
             print("Login successful!\n")
             is_logged_in = True
 
-    for i in range(2,15): #this loop iterates from the second tr class (inside the tbody class) to the 15th
-        line = line + str(i) + "]" #line edits the xpath variable
-        temp_var = driver.find_element_by_xpath(line) #this pulls the text from the 'line' xpath location
+    WebDriverWait(driver, 5).until(ExpectedConditions.element_to_be_clickable((By.XPATH, "//a[contains(@href, '/schedule')]"))).click()
+
+    WebDriverWait(driver, 7).until(ExpectedConditions.element_to_be_clickable((By.XPATH, "//div[@id='categories']/nav/div/div/a[2]"))).click()
+
+    # find all the dates and store that data for use later
+    date_time = DateTime.datetime.now()
+    # make time substring - remove 24hr portion of current time
+    unix_timestamp_substring = str(time.mktime(date_time.timetuple()))[:5]
+    # add in the 4 pm timestamp to the first 5 numbers in the timestamp 
+    # to create a timestamp with the current day but time of 4 pm
+    element_id_timestamp = unix_timestamp_substring + "09600"
+
+    driver.find_element("name", "week-0")
+    # loop through week-0 div and get dates
+    for i in range(0,7): 
+        # alway calculate day that starts at 4 GMT
+        temp_var =  driver.find_element("name", element_id_timestamp) 
         return_list.append(temp_var.text) #each line is appended to the return_list
-        line = "/html/body/table[3]/tbody/tr["
+        element_id_timestamp = str(int(element_id_timestamp) + 86400)
+
+    driver.find_element("name", "week-1")
+    # loop through week-1 div and get dates
+    for i in range(0,7): 
+        # alway calculate day that starts at 4 GMT
+        temp_var =  driver.find_element("name", element_id_timestamp) 
+        return_list.append(temp_var.text) #each line is appended to the return_list
+        element_id_timestamp = str(int(element_id_timestamp) + 86400)
+        
     driver.quit() #quitting the online session
     return return_list
 
-def simplify(data): #simplifies the data that get_bu_data returns
-    data[0] = data[0][40:] #removes the first 40 characters of the first string within data
+    # Example output data
+    # ['THURSDAY, SEPTEMBER 8\n7:00 PM\nLIVE\n20 min Tabata Ride\nKENDALL TOOLE · CYCLING', 'FRIDAY, SEPTEMBER 9\nNo Classes', 'SATURDAY, SEPTEMBER 10\nNo Classes', 'SUNDAY, SEPTEMBER 11\nNo Classes', 'MONDAY, SEPTEMBER 12\nNo Classes', 'TUESDAY, SEPTEMBER 13\nNo Classes', 'WEDNESDAY, SEPTEMBER 14\n12:35 PM\nLIVE\n20 min Low Impact Ride\nROBIN ARZÓN · CYCLING\nYOU’RE IN', 'THURSDAY, SEPTEMBER 15\n7:00 PM\nLIVE\n30 min 90s Pop Ride\nKENDALL TOOLE · CYCLING\nYOU’RE IN', 'FRIDAY, SEPTEMBER 16\n5:30 PM\nLIVE\n30 min Latin Ride\nROBIN ARZÓN · CYCLING\nYOU’RE IN', 'SATURDAY, SEPTEMBER 17\nNo Classes', 'SUNDAY, SEPTEMBER 18\nNo Classes', 'MONDAY, SEPTEMBER 19\nNo Classes', 'TUESDAY, SEPTEMBER 20\nNo Classes', 'WEDNESDAY, SEPTEMBER 21\nNo Classes']
+
+def simplify(data): #simplifies the data that get_pelo_data returns
+    data[0] = data[0] 
+
     return_list = []
     line = ""
+
     for x in data:
         for y in x:
             if y != '\n': #removes endl's
                 line = line+y
             if y == '\n': #replaces endl's with a space
                 line = line + " "
-        if(line[0:6] == "Summer"):
+        if(line[0:7] == "No Classes"):
             return return_list
-        if(line != "" and line[0:6] != "Summer"): #appends the edited data to return_list as long as its not empty or starting with 'Summer'
+        if(line != "" and line[0:7] != "No Classes"): #appends the edited data to return_list as long as its not empty or starting with 'Summer'
             return_list.append(line)
         line = ""
     return return_list
 
-def parse(data): #takes the simplified data and turns it into a list of lists contianing strings [["",""],["",""]]
-    omitted_variables = {"no","room","arranged"}
-    line = ""
-    temp1 = []
-    temp2 = []
-    temp3 = []
-    temp4 = []
-    temp5 = []
-    for x in data:
-        for y in x:
-            if y != " ":
-                line = line + y
-            if y == " " and line != "" and line != "Class" and line != "Full":
-                temp2.append(line)
-                line = ""
-        if "Class" in line or "Full" in line:
-            line = ""
-        if line != "":
-            temp2.append(line)
-            line = ""
-        if temp2 != []:
-            temp3.append(temp2)
-            temp2 = []
-    for a in temp3:
-        for b in a:
-            if b.lower() not in omitted_variables:
-                temp4.append(b)
-        temp5.append(temp4)
-        temp4 = []
-    return temp5
-
-def new_cal_event(summary, location, start_datetime, end_datetime, recurrence): #adds an event to your calendar
-    #print(summary,"||", location,"||", start_datetime,"||", end_datetime,"||", recurrence,"||", email)
+def new_cal_event(summary, location, start_datetime, end_datetime): #adds an event to your calendar
+    print(summary,"||", location,"||", start_datetime,"||", end_datetime,"||", email)
     EVENT = {
         "summary": summary,
         "location": location,
@@ -177,10 +186,6 @@ def new_cal_event(summary, location, start_datetime, end_datetime, recurrence): 
             "dateTime": end_datetime,
             "timeZone": "America/New_York"
         },
-        "recurrence": [
-            recurrence,
-        ],
-        
         "attendees": [
             {
                 "email": global_email,
@@ -192,99 +197,77 @@ def new_cal_event(summary, location, start_datetime, end_datetime, recurrence): 
     print('''*** %r event added:
         Start: %s
         End:   %s''' % (e['summary'].encode('utf-8'), e['start']['dateTime'], e['end']['dateTime']))
-    
-def week_finder(week): 
-#takes the given days of the week and turns them into dates 
-    week_dict = {"Mon":23, "Tue":24, "Wed":25, "Thu":26, "Fri":27} 
-    #days of the week with their cooresponding date on the first week of classes in spring 2017
-    line = ""
-    return_list = []
-    try:
-        for x in week:
-            if x != ',':
-                line = line + x
-            if x == ',':
-                return_list.append(week_dict[line])
-                line = ""
-        return_list.append(week_dict[line])
-        return return_list
-    except KeyError:
-        return []
 
-def start_to_militarty_time(i): 
-#takes the start time that has been webscraped and turns it into military time
-    start_datetime = ""
-    if "".join(i[-2][-2:]) == "pm":
-        if int("".join(i[-2][:-5])) != 12:
-            start_datetime = str(int(i[-2][:-5]) + 12) + i[-2][-5:-2]
-        if int("".join(i[-2][:-5])) == 12:
-            start_datetime = i[-2][:-2]
-    if "".join(i[-2][-2:]) == "am":
-        start_datetime = i[-2][:-2]
-    return str(start_datetime)
+# def start_to_militarty_time(i): 
+# #takes the start time that has been webscraped and turns it into military time
+#     start_datetime = ""
+#     if "".join(i[-2][-2:]) == "pm":
+#         if int("".join(i[-2][:-5])) != 12:
+#             start_datetime = str(int(i[-2][:-5]) + 12) + i[-2][-5:-2]
+#         if int("".join(i[-2][:-5])) == 12:
+#             start_datetime = i[-2][:-2]
+#     if "".join(i[-2][-2:]) == "am":
+#         start_datetime = i[-2][:-2]
+#     return str(start_datetime)
 
-def end_to_military_time(i): 
-#takes the end time that has been webscraped and turns it into military time
-    end_datetime = ""
-    if "".join(i[-1][-2:]) == "pm":
-        if int("".join(i[-1][:-5])) != 12:
-            end_datetime = str(int(i[-1][:-5]) + 12) + i[-1][-5:-2]
-        if int("".join(i[-1][:-5])) == 12:
-            end_datetime = i[-1][:-2]
-    if "".join(i[-1][-2:]) == "am":
-        end_datetime = i[-1][:-2]
-    return str(end_datetime)
+# def end_to_military_time(i): 
+# #takes the end time that has been webscraped and turns it into military time
+#     end_datetime = ""
+#     if "".join(i[-1][-2:]) == "pm":
+#         if int("".join(i[-1][:-5])) != 12:
+#             end_datetime = str(int(i[-1][:-5]) + 12) + i[-1][-5:-2]
+#         if int("".join(i[-1][:-5])) == 12:
+#             end_datetime = i[-1][:-2]
+#     if "".join(i[-1][-2:]) == "am":
+#         end_datetime = i[-1][:-2]
+#     return str(end_datetime)
 
 #executing the functions
 credentials = login("Peloton") #getting username and password
 # send_email(credentials)#checking if user wants an email
 data = get_pelo_data(credentials) #scraping the website
+print(data)
 data = simplify(data) #simplifying data
-data = parse(data) #making data usable
+# data = parse(data) #making data usable
 print(data)
 
 #declaring the variables needed to call new_cal_event
 EVENT = {}
+
 start_time_of_day = ""
 end_time_of_day = ""
+
 length = 0
+
 summary = ""
-location = ""
+
 start_datetime = ""
 end_datetime = ""
-recurrence = "RRULE:FREQ=WEEKLY;UNTIL=20170428T170000Z"
-days_of_week = []
+
+days_of_week = ""
 
 #start of google API code
-try:
-    import argparse
-    flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
-except ImportError:
-    flags = None
-SCOPES = 'https://www.googleapis.com/auth/calendar'
-store = file.Storage('storage.json')
-creds = store.get()
-if not creds or creds.invalid:
-    flow = client.flow_from_clientsecrets('client_secret.json', SCOPES)
-    creds = tools.run_flow(flow, store, flags) \
-            if flags else tools.run(flow, store)
-CAL = build('calendar', 'v3', http=creds.authorize(Http()))
+# try:
+#     import argparse
+#     flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
+# except ImportError:
+#     flags = None
+# SCOPES = 'https://www.googleapis.com/auth/calendar'
+# store = file.Storage('storage.json')
+# creds = store.get()
+# if not creds or creds.invalid:
+#     flow = client.flow_from_clientsecrets('client_secret.json', SCOPES)
+#     creds = tools.run_flow(flow, store, flags) \
+#             if flags else tools.run(flow, store)
+# CAL = build('calendar', 'v3', http=creds.authorize(Http()))
 
 #using the simplified and parsed data to add new calendar events
-for i in data:
-    length = len(i)
-    summary = " ".join(i[5:-7])
-    summary = summary + " " + str(i[-6]) + "-" + str(i[-7])
-    location = str(i[-5]) + str(i[-4])
-    start_time_of_day = start_to_militarty_time(i)
-    end_time_of_day = end_to_military_time(i)
-    days_of_week = week_finder(i[-3])
+# for i in data:
+#     length = len(i)
+#     summary = " ".join(i[5:-7])
+#     summary = summary + " " + str(i[-6]) + "-" + str(i[-7])
+#     start_time_of_day = start_to_militarty_time(i)
+#     end_time_of_day = end_to_military_time(i)
+#     days_of_week = i[0]
 
-#becuase classes can be more than one day of the week the loop makes sure each day of the week is added
-    if days_of_week != []:
-        for j in days_of_week:
-            start_datetime = "2017-01-"+ str(j) +"T" + start_time_of_day + ":00.000"
-            end_datetime = "2017-01-"+ str(j) + "T" + end_time_of_day +":00.000"
-            #adding the event to your google calendar
-            new_cal_event(summary, location, start_datetime, end_datetime, recurrence)
-print("\nYour scheudle has been updated. Check your email/google calendar.\n")
+print("\nYour schedule has been updated. Check your google calendar.\n")
